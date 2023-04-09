@@ -1,6 +1,7 @@
 use lunatic::{supervisor::Supervisor, process::{ProcessRef, StartProcess}, abstract_process, Process};
+use tracing::info;
 
-use crate::bucket_list_process::BucketListProcess;
+use crate::{bucket_list_process::BucketListProcess, node::Node};
 use std::convert::From;
 use serde::{Serialize, Deserialize};
 
@@ -13,14 +14,24 @@ pub enum IdKind {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct NodeInfo {
+    pub ip: String,
+    pub port: u64,
+    pub id: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct BinaryOptionNodeArgs {
     pub id: Option<u64>,
-    pub k: Option<u64>
+    pub port: u64,
+    pub ip: String,
+    pub k: Option<u64>,
+    pub bootstrap_node: Option<NodeInfo>
 }
 
 pub struct NodeArgs {
-    pub id: u64,
-    pub k: u64
+    pub k: u64,
+    pub node_info: NodeInfo
 }
 
 impl From<BinaryOptionNodeArgs> for NodeArgs {
@@ -32,7 +43,7 @@ impl From<BinaryOptionNodeArgs> for NodeArgs {
 
         let k = item.id.unwrap_or(3);
 
-        Self { id, k }
+        Self { node_info: NodeInfo { ip: item.ip, port: item.port, id }, k }
     }
 }
 
@@ -50,16 +61,17 @@ impl Supervisor for NodeSupervisor {
 }
 
 pub struct NodeProcess {
-    bucket_list: ProcessRef<BucketListProcess>
+    bucket_list: ProcessRef<BucketListProcess>,
+    node: Node
 }
 
 #[abstract_process(visibility = pub)]
 impl NodeProcess {
     #[init]
     fn init(this: ProcessRef<Self>, args: BinaryOptionNodeArgs) -> Self {
-
-        let bucket_list = BucketListProcess::start_link((), None);
-
-        Self{ bucket_list }
+        let node_args: NodeArgs = args.into();
+        let bucket_list = BucketListProcess::start_link((node_args.k, node_args.node_info.id), Some("bucket_list"));
+        info!("Starting node process...");
+        Self{ bucket_list, node: Node::new(node_args.node_info) }
     }
 }

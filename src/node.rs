@@ -1,18 +1,18 @@
-use crate::bucket_list::BucketList;
+use crate::{bucket_list::BucketList, node_supervisor::NodeInfo};
 
 pub struct Node {
     pub id: u64,
-    pub id_size: u64,
+    pub port: u64,
+    pub ip: String
 }
 
+
 impl Node {
-    fn new(id: u64, id_size: u64, k: u64) -> Self {
-        return Self { id: id % id_size, id_size }
+    pub fn new(node_info: NodeInfo) -> Self {
+        return Self { id: node_info.id, ip: node_info.ip, port: node_info.port }
     }
 
     fn id_bin(&self) -> String {
-        format!("{:width$b}", self.id, width = self.id_size as usize)
+        format!("{:b}", self.id)
     }
-
-
 }
